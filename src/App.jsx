@@ -1,32 +1,41 @@
-import React, { useState } from "react"
+import React, { useEffect } from "react"
 import {
-  BrowserRouter as Router,
   Routes,
   Route,
   Navigate,
+  useLocation,
+  useNavigate,
 } from "react-router-dom"
 
 import Login from "./pages/Login"
 import MainApp from "./MainApp"
+import authStore from "./store/authStore"
 
 const App = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(true)
+  const { isAuthenticated } = authStore()
+
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    if (!isAuthenticated && location.pathname !== "/login") {
+      navigate("/login", { replace: true })
+    }
+  }, [isAuthenticated, location.pathname, navigate])
 
   return (
-    <Router>
-      <Routes>
-        <Route
-          path="/login"
-          element={<Login onLogin={() => setIsAuthenticated(true)} />}
-        />
-        <Route
-          path="/*"
-          element={
-            isAuthenticated ? <MainApp /> : <Navigate to="/login" replace />
-          }
-        />
-      </Routes>
-    </Router>
+    <Routes>
+      <Route
+        path="/login/*"
+        element={!isAuthenticated ? <Login /> : <Navigate to="/" replace />}
+      />
+      <Route
+        path="/*"
+        element={
+          isAuthenticated ? <MainApp /> : <Navigate to="/login" replace />
+        }
+      />
+    </Routes>
   )
 }
 

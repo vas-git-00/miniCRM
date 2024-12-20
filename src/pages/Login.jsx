@@ -1,21 +1,24 @@
 import React, { useState } from "react"
 import { Form, Input, Button, Card } from "antd"
+import authStore from "../store/authStore"
 
-const Login = ({ onLogin }) => {
+const Login = () => {
   const [loading, setLoading] = useState(false)
+  const { login } = authStore()
 
   const handleFinish = (values) => {
     setLoading(true)
 
     // Пример проверки (можно заменить на запрос к API)
-    setTimeout(() => {
-      if (values.username === "admin" && values.password === "123456") {
-        onLogin(true) // Успешная авторизация
+    
+      if (values.email === "admin@mail.ru" && values.password === "123456") {
+        // Успешная авторизация
+        login(values.email)
       } else {
-        alert("Неверное имя пользователя или пароль")
+        alert("Неверный email или пароль!")
       }
       setLoading(false)
-    }, 1000)
+   
   }
 
   return (
@@ -28,12 +31,12 @@ const Login = ({ onLogin }) => {
       }}
     >
       <Card title="Авторизация" style={{ width: 300 }}>
-        <Form name="login" onFinish={handleFinish}>
+        <Form name="email" onFinish={handleFinish}>
           <Form.Item
-            name="username"
-            rules={[{ required: true, message: "Введите имя пользователя!" }]}
+            name="email"
+            rules={[{ required: true, message: "Введите email'!" }]}
           >
-            <Input placeholder="Имя пользователя" />
+            <Input placeholder="Email" />
           </Form.Item>
           <Form.Item
             name="password"
