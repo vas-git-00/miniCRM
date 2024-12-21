@@ -20,3 +20,7 @@ body {
 .ant-layout-content {
   overflow: auto; /* Только содержимое прокручивается */
 }
+
+.logout-icon:hover {
+  color: rgba(184, 2, 2, 0.824);
+}
