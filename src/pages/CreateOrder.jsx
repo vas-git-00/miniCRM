@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
 import {
   Tabs,
   Form,
@@ -9,8 +9,9 @@ import {
   Space,
   Typography,
   Popconfirm,
+  Spin,
 } from "antd"
-import { MinusCircleOutlined } from "@ant-design/icons"
+import { MinusCircleOutlined, CheckCircleTwoTone } from "@ant-design/icons"
 
 const { Option } = Select
 const { Text } = Typography
@@ -22,7 +23,39 @@ const CreateOrder = () => {
   const [orderStatus, setOrderStatus] = useState("Новый")
   const [manager, setManager] = useState(null)
   const [suppliers, setSuppliers] = useState([])
-  const [orderNumber, setOrderNumber] = useState('24-2322 от 22.12.2024')
+  const [orderNumber, setOrderNumber] = useState("24-2322 от 22.12.2024")
+  const [loading, setLoading] = useState(false) // Состояние загрузки
+  const [saved, setSaved] = useState(false) // Состояние сохранения
+
+  const saveOrderData = async () => {
+    try {
+      setLoading(true) // Показать Spin
+      setSaved(false) // Скрыть статус "Сохранено"
+      const orderData = {
+        orderNumber,
+        orderStatus,
+        selectedClient,
+        manager,
+        orderItems,
+      }
+
+      // Имитируем запрос на сохранение
+      //await axios.post("/api/orders", orderData);
+      console.log(orderData)
+
+      setLoading(false) // Скрыть Spin
+      setSaved(true) // Показать статус "Сохранено"
+      setTimeout(() => setSaved(false), 2000) // Убрать "Сохранено" через 2 сек.
+    } catch (error) {
+      setLoading(false) // Скрыть Spin
+      console.error("Ошибка при сохранении:", error)
+    }
+  }
+
+  // Сохранение при изменении данных
+  useEffect(() => {
+    saveOrderData()
+  }, [orderItems, selectedClient, orderStatus, manager])
 
   const calculateOrderTotal = () => {
     return orderItems.reduce(
@@ -142,7 +175,7 @@ const CreateOrder = () => {
 
               <Input
                 type="number"
-                placeholder="Закупка"
+                placeholder="Закупка, руб."
                 value={item.purchasePrice}
                 onChange={(e) =>
                   setOrderItems(
@@ -153,11 +186,15 @@ const CreateOrder = () => {
                     )
                   )
                 }
-                style={{ width: "140px", appearance: "none", MozAppearance: "textfield" }}
+                style={{
+                  width: "140px",
+                  appearance: "none",
+                  MozAppearance: "textfield",
+                }}
               />
               <Input
                 type="number"
-                placeholder="Продажа"
+                placeholder="Продажа, руб."
                 value={item.sellingPrice}
                 onChange={(e) =>
                   setOrderItems(
@@ -168,7 +205,11 @@ const CreateOrder = () => {
                     )
                   )
                 }
-                style={{ width: "140px", appearance: "none", MozAppearance: "textfield"}}
+                style={{
+                  width: "140px",
+                  appearance: "none",
+                  MozAppearance: "textfield",
+                }}
               />
               <Popconfirm
                 title="Удалить эту позицию?"
@@ -182,7 +223,12 @@ const CreateOrder = () => {
               </Popconfirm>
             </Space>
           ))}
-          <Button type="dashed" onClick={addOrderItem} style={{ marginTop: "8px" }} block>
+          <Button
+            type="dashed"
+            onClick={addOrderItem}
+            style={{ marginTop: "8px" }}
+            block
+          >
             Добавить позицию
           </Button>
         </Card>
@@ -217,13 +263,15 @@ const CreateOrder = () => {
       <Card style={{ marginBottom: "20px" }}>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "16px" }}>
           {/* Первая строка */}
-          <div style={{ width: "220px"}}>
+          <div style={{ width: "220px" }}>
             <Text strong>Сумма заказа:</Text>
-            <Text style={{ color: "green", fontWeight: "bold" ,marginLeft: "8px" }}>
+            <Text
+              style={{ color: "green", fontWeight: "bold", marginLeft: "8px" }}
+            >
               {calculateOrderTotal().toFixed(2)} ₽
             </Text>
           </div>
-          <div style={{ width: "220px"}}>
+          <div style={{ width: "220px" }}>
             <Text strong>Долг:</Text>
             <Text style={{ color: "red", marginLeft: "8px" }}>
               {calculateOrderDebt().toFixed(2)} ₽
@@ -232,7 +280,23 @@ const CreateOrder = () => {
           <div>
             <Text strong>Статус оплаты:</Text>
             <Text style={{ marginLeft: "8px" }}>
-              {calculateOrderDebt() > 0 ? "Не оплачено" : "Оплачено"}
+              
+              {(() => {
+                const total = calculateOrderTotal()
+                const debt = calculateOrderDebt()
+
+                if (total === 0 && debt > 0) {
+                  return "Ошибка: сумма заказа равна 0, но долг больше 0"
+                } else if (debt === total) {
+                  return "Не оплачено"
+                } else if (debt === 0 && total > 0) {
+                  return "Оплачено"
+                } else if (debt === 0 && total === 0) {
+                  return "Не оплачено"
+                } else {
+                  return "Частично оплачено"
+                }
+              })()}
             </Text>
           </div>
         </div>
@@ -247,14 +311,12 @@ const CreateOrder = () => {
         >
           {/* Вторая строка */}
           <div>
-            
-              <Input
-                disabled
-                value={orderNumber}
-                onChange={(value) => setOrderNumber(value)}
-                style={{ width: "220px", fontWeight: "bold" }}
-              />  
-            
+            <Input
+              disabled
+              value={orderNumber}
+              onChange={(value) => setOrderNumber(value)}
+              style={{ width: "220px", fontWeight: "bold" }}
+            />
           </div>
           <div>
             <Form.Item label="Клиент" style={{ margin: 0 }}>
@@ -304,6 +366,35 @@ const CreateOrder = () => {
 
       {/* Вкладки */}
       <Tabs items={tabs} />
+
+      {/* Spin в правом нижнем углу */}
+      {(loading || saved) && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 20,
+            right: 20,
+            zIndex: 1000,
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            padding: "10px 20px",
+          }}
+        >
+          {loading ? (
+            <>
+              <Spin size="default" />
+            </>
+          ) : (
+            <>
+              <CheckCircleTwoTone
+                twoToneColor="#52c41a"
+                style={{ fontSize: "22px" }}
+              />
+            </>
+          )}
+        </div>
+      )}
     </div>
   )
 }
