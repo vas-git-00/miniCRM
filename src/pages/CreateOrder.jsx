@@ -1,216 +1,300 @@
-import React, { useState } from "react";
-import { Form, Input, Button, Select, Card, Space, Typography, Divider } from "antd";
+import React, { useState } from "react"
+import {
+  Tabs,
+  Form,
+  Input,
+  Button,
+  Select,
+  Card,
+  Space,
+  Typography,
+  Popconfirm,
+} from "antd"
+import { MinusCircleOutlined } from "@ant-design/icons"
 
-const { Option } = Select;
-const { Title, Text } = Typography;
+const { TabPane } = Tabs
+const { Option } = Select
+const { Title, Text } = Typography
 
 const CreateOrder = () => {
-  const [orderItems, setOrderItems] = useState([]);
-  const [totalAmount, setTotalAmount] = useState(0);
-  const [totalPurchase, setTotalPurchase] = useState(0);
-  const [managerBonus, setManagerBonus] = useState(0);
+  const [orderItems, setOrderItems] = useState([])
+  const [incomingPayments, setIncomingPayments] = useState([])
+  const [selectedClient, setSelectedClient] = useState(null)
+  const [orderStatus, setOrderStatus] = useState("Новый")
+  const [manager, setManager] = useState(null)
+  const [suppliers, setSuppliers] = useState([])
 
-  // Функция для добавления новой позиции
+  const calculateOrderTotal = () => {
+    return orderItems.reduce(
+      (total, item) => total + (item.sellingPrice || 0),
+      0
+    )
+  }
+
+  const calculateOrderDebt = () => {
+    const total = calculateOrderTotal()
+    const payments = incomingPayments.reduce(
+      (sum, payment) => sum + (payment.amount || 0),
+      0
+    )
+    return total - payments
+  }
+
   const addOrderItem = () => {
-    setOrderItems([
-      ...orderItems,
-      {
-        id: Date.now(),
-        position: "",
-        supplier: "",
-        quantity: 1,
-        purchasePrice: 0,
-        sellingPrice: 0,
-        totalPurchase: 0,
-        totalSelling: 0,
-      },
-    ]);
-  };
+    const newItem = {
+      id: Date.now(),
+      position: null,
+      supplier: null,
+      quantity: null,
+      purchasePrice: null,
+      sellingPrice: null,
+    }
+    setOrderItems([...orderItems, newItem])
+    recalculateSuppliers([...orderItems, newItem])
+  }
 
-  // Функция для удаления позиции
-  const removeOrderItem = (id) => {
-    const updatedItems = orderItems.filter((item) => item.id !== id);
-    setOrderItems(updatedItems);
-    recalculateTotals(updatedItems);
-  };
+  const recalculateSuppliers = (items) => {
+    const uniqueSuppliers = Array.from(
+      new Set(items.map((item) => item.supplier).filter(Boolean))
+    )
+    setSuppliers(uniqueSuppliers)
+  }
 
-  // Функция для обновления позиции
-  const updateOrderItem = (id, field, value) => {
-    const updatedItems = orderItems.map((item) => {
-      if (item.id === id) {
-        const updatedItem = { ...item, [field]: value };
+  const deleteOrderItem = (id) => {
+    setOrderItems(orderItems.filter((item) => item.id !== id))
+  }
 
-        if (field === "quantity" || field === "purchasePrice" || field === "sellingPrice") {
-          const quantity = parseFloat(updatedItem.quantity) || 0;
-          const purchasePrice = parseFloat(updatedItem.purchasePrice) || 0;
-          const sellingPrice = parseFloat(updatedItem.sellingPrice) || 0;
+  const tabs = [
+    {
+      key: "1",
+      label: "Состав заказа",
+      children: (
+        <Card title="Позиции заказа" style={{ marginBottom: "16px" }}>
+          {orderItems.map((item, index) => (
+            <Space
+              key={item.id}
+              style={{ display: "flex", marginBottom: "8px" }}
+              align="baseline"
+            >
+              <Text style={{ width: "40px" }}>{index + 1}</Text>
+              <Select
+                showSearch
+                value={item.position}
+                onChange={(value) =>
+                  setOrderItems(
+                    orderItems.map((o) =>
+                      o.id === item.id ? { ...o, position: value } : o
+                    )
+                  )
+                }
+                style={{ width: "200px" }}
+                placeholder="Позиция"
+              >
+                <Option value="Бирки">Бирки</Option>
+                <Option value="Этикетки">Этикетки</Option>
+                <Option value="Наклейки">Наклейки</Option>
+              </Select>
+              <Input
+                placeholder="Примечание"
+                value={item.note}
+                onChange={(e) =>
+                  setOrderItems(
+                    orderItems.map((o) =>
+                      o.id === item.id ? { ...o, note: e.target.value } : o
+                    )
+                  )
+                }
+                style={{ width: "200px" }}
+              />
+              <Select
+                showSearch
+                value={item.supplier}
+                onChange={(value) =>
+                  setOrderItems(
+                    orderItems.map((o) =>
+                      o.id === item.id ? { ...o, supplier: value } : o
+                    )
+                  )
+                }
+                style={{ width: "250px" }}
+                placeholder="Поставщик"
+              >
+                <Option value="ПроПринт">ПроПринт</Option>
+                <Option value="Шалохин">Шалохин</Option>
+                <Option value="2 клена">2 клена</Option>
+              </Select>
 
-          updatedItem.totalPurchase = quantity * purchasePrice;
-          updatedItem.totalSelling = quantity * sellingPrice;
-        }
+              <Input
+                type="number"
+                placeholder="Кол-во"
+                value={item.quantity}
+                onChange={(e) =>
+                  setOrderItems(
+                    orderItems.map((o) =>
+                      o.id === item.id
+                        ? { ...o, quantity: parseFloat(e.target.value) }
+                        : o
+                    )
+                  )
+                }
+                style={{ width: "100px" }}
+              />
 
-        return updatedItem;
-      }
-      return item;
-    });
-
-    setOrderItems(updatedItems);
-    recalculateTotals(updatedItems);
-  };
-
-  // Пересчет итоговых значений
-  const recalculateTotals = (items) => {
-    const totalSelling = items.reduce((sum, item) => sum + item.totalSelling, 0);
-    const totalPurchase = items.reduce((sum, item) => sum + item.totalPurchase, 0);
-    const bonus = (totalSelling - totalPurchase) * 0.2;
-
-    setTotalAmount(totalSelling);
-    setTotalPurchase(totalPurchase);
-    setManagerBonus(bonus);
-  };
-
-  const handleSubmit = () => {
-    console.log("Заказ отправлен:", { totalAmount, totalPurchase, managerBonus, orderItems });
-    alert("Заказ успешно создан!");
-  };
+              <Input
+                type="number"
+                placeholder="Закупка"
+                value={item.purchasePrice}
+                onChange={(e) =>
+                  setOrderItems(
+                    orderItems.map((o) =>
+                      o.id === item.id
+                        ? { ...o, purchasePrice: parseFloat(e.target.value) }
+                        : o
+                    )
+                  )
+                }
+                style={{ width: "140px", appearance: "none", MozAppearance: "textfield" }}
+              />
+              <Input
+                type="number"
+                placeholder="Продажа"
+                value={item.sellingPrice}
+                onChange={(e) =>
+                  setOrderItems(
+                    orderItems.map((o) =>
+                      o.id === item.id
+                        ? { ...o, sellingPrice: parseFloat(e.target.value) }
+                        : o
+                    )
+                  )
+                }
+                style={{ width: "140px", appearance: "none", MozAppearance: "textfield"}}
+              />
+              <Popconfirm
+                title="Удалить эту позицию?"
+                onConfirm={() => deleteOrderItem(item.id)}
+                okText="Да"
+                cancelText="Нет"
+              >
+                <MinusCircleOutlined
+                  style={{ color: "red", fontSize: "16px", cursor: "pointer" }}
+                />
+              </Popconfirm>
+            </Space>
+          ))}
+          <Button type="dashed" onClick={addOrderItem} style={{ marginTop: "8px" }} block>
+            Добавить позицию
+          </Button>
+        </Card>
+      ),
+    },
+    {
+      key: "2",
+      label: "Платежи",
+      children: <div>Платежи</div>,
+    },
+    {
+      key: "3",
+      label: "Инфо по клиенту",
+      children: <div>Инфо по клиенту</div>,
+    },
+  ]
 
   return (
-    <div style={{ padding: "20px" }}>
-      <Title level={2}>Создать заказ</Title>
-      <Card style={{ marginBottom: "16px" }}>
-        <Space direction="horizontal" style={{ justifyContent: "space-between", width: "100%" }}>
-          <Text>
-            Сумма заказа: <Text strong style={{ color: "green" }}>{totalAmount.toFixed(2)} ₽</Text>
-          </Text>
-          <Text>
-            Итоговая закупка: <Text strong>{totalPurchase.toFixed(2)} ₽</Text>
-          </Text>
-          <Text>
-            Премия менеджера: <Text strong>{managerBonus.toFixed(2)} ₽</Text>
-          </Text>
-        </Space>
-        <Divider />
-        <Form layout="inline">
-          <Form.Item label="Клиент">
-            <Select
-              showSearch
-              placeholder="Выберите клиента"
-              optionFilterProp="children"
-              style={{ width: 200 }}
-            >
-              <Option value="client1">Клиент 1</Option>
-              <Option value="client2">Клиент 2</Option>
-              <Option value="client3">Клиент 3</Option>
-            </Select>
-          </Form.Item>
-          <Form.Item label="Статус заказа">
-            <Select defaultValue="новый" style={{ width: 150 }}>
-              <Option value="новый">Новый</Option>
-              <Option value="в работе">В работе</Option>
-              <Option value="готов">Готов</Option>
-            </Select>
-          </Form.Item>
-          <Form.Item label="Статус оплаты">
-            <Select defaultValue="Нет оплаты" style={{ width: 150 }}>
-              <Option value="Нет оплаты">Нет оплаты</Option>
-              <Option value="Оплачено">Оплачено</Option>
-              <Option value="Частично оплачено">Частично оплачено</Option>
-            </Select>
-          </Form.Item>
-        </Form>
-      </Card>
+    <div>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 16,
+        }}
+      >
+        <h1 style={{ margin: 0 }}>Новый заказ</h1>
+      </div>
 
-      <Card title="Позиции заказа" style={{ marginBottom: "16px" }}>
-        {/* Заголовок таблицы */}
-        <div style={{ display: "flex", marginBottom: "8px", fontWeight: "bold" }}>
-          <Text style={{ width: "30px" }}>№</Text>
-          <Text style={{ width: "150px" }}>Позиция</Text>
-          <Text style={{ width: "200px" }}>Поставщик</Text>
-          <Text style={{ width: "100px" }}>Кол-во</Text>
-          <Text style={{ width: "150px" }}>Закупочная цена</Text>
-          <Text style={{ width: "150px" }}>Продажная цена</Text>
-          <Text style={{ width: "150px" }}>Итого закупка</Text>
-          <Text style={{ width: "150px" }}>Итого продажа</Text>
+      {/* Информация по заказу */}
+      <Card style={{ marginBottom: "20px" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "16px" }}>
+          {/* Первая строка */}
+          <div style={{ width: "220px"}}>
+            <Text strong>Сумма заказа:</Text>
+            <Text style={{ color: "green", fontWeight: "bold" ,marginLeft: "8px" }}>
+              {calculateOrderTotal().toFixed(2)} ₽
+            </Text>
+          </div>
+          <div style={{ width: "220px"}}>
+            <Text strong>Долг:</Text>
+            <Text style={{ color: "red", marginLeft: "8px" }}>
+              {calculateOrderDebt().toFixed(2)} ₽
+            </Text>
+          </div>
+          <div>
+            <Text strong>Статус оплаты:</Text>
+            <Text style={{ marginLeft: "8px" }}>
+              {calculateOrderDebt() > 0 ? "Не оплачено" : "Оплачено"}
+            </Text>
+          </div>
         </div>
-        {orderItems.map((item, index) => (
-          <Space key={item.id} style={{ display: "flex", marginBottom: "8px" }} align="baseline">
-            <Text style={{ width: "30px" }}>{index + 1}</Text>
-            <Select
-              showSearch
-              value={item.position}
-              onChange={(value) => updateOrderItem(item.id, "position", value)}
-              style={{ width: "150px" }}
-              placeholder="Выберите позицию"
-            >
-              <Option value="Бирки">Бирки</Option>
-              <Option value="Этикетки">Этикетки</Option>
-              <Option value="Наклейки">Наклейки</Option>
-            </Select>
-            <Select
-              showSearch
-              value={item.supplier}
-              onChange={(value) => updateOrderItem(item.id, "supplier", value)}
-              style={{ width: "200px" }}
-              placeholder="Выберите поставщика"
-            >
-              <Option value="ПроПринт">ПроПринт</Option>
-              <Option value="Шалохин">Шалохин</Option>
-              <Option value="2 клена">2 клена</Option>
-            </Select>
-            <Input
-              type="number"
-              placeholder="Кол-во"
-              value={item.quantity}
-              onChange={(e) => updateOrderItem(item.id, "quantity", parseFloat(e.target.value) || 0)}
-              style={{ width: "100px" }}
-            />
-            <Input
-              type="number"
-              placeholder="Закупочная цена"
-              value={item.purchasePrice}
-              onChange={(e) => updateOrderItem(item.id, "purchasePrice", parseFloat(e.target.value) || 0)}
-              style={{ width: "150px" }}
-            />
-            <Input
-              type="number"
-              placeholder="Продажная цена"
-              value={item.sellingPrice}
-              onChange={(e) => updateOrderItem(item.id, "sellingPrice", parseFloat(e.target.value) || 0)}
-              style={{ width: "150px" }}
-            />
-            <Input
-              type="number"
-              placeholder="Итого закупка"
-              value={item.totalPurchase}
-              disabled
-              style={{ width: "150px" }}
-            />
-            <Input
-              type="number"
-              placeholder="Итого продажа"
-              value={item.totalSelling}
-              disabled
-              style={{ width: "150px" }}
-            />
-            <Button type="link" onClick={() => removeOrderItem(item.id)} danger>
-              Удалить
-            </Button>
-          </Space>
-        ))}
-        <Button type="dashed" onClick={addOrderItem} block>
-          Добавить позицию
-        </Button>
+
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "16px",
+            marginTop: "16px",
+          }}
+        >
+          {/* Вторая строка */}
+          <div>
+            <Form.Item label="Клиент" style={{ margin: 0 }}>
+              <Select
+                showSearch
+                value={selectedClient}
+                onChange={(value) => setSelectedClient(value)}
+                style={{ width: "285px" }}
+                placeholder="Выберите клиента"
+              >
+                <Option value="ООО Ромашка">ООО Ромашка</Option>
+                <Option value="ИП Иванов">ИП Иванов</Option>
+                <Option value="ООО Тюльпан">ООО Тюльпан</Option>
+              </Select>
+            </Form.Item>
+          </div>
+          <div>
+            <Form.Item label="Статус заказа" style={{ margin: 0 }}>
+              <Select
+                value={orderStatus}
+                onChange={(value) => setOrderStatus(value)}
+                style={{ width: "200px" }}
+              >
+                <Option value="Новый">Новый</Option>
+                <Option value="В работе">В работе</Option>
+                <Option value="Готов">Готов</Option>
+              </Select>
+            </Form.Item>
+          </div>
+          <div>
+            <Form.Item label="Менеджер" style={{ margin: 0 }}>
+              <Select
+                value={manager}
+                onChange={(value) => setManager(value)}
+                style={{ width: "200px" }}
+                placeholder="Выберите менеджера"
+              >
+                <Option value="Иванов Иван">Иванов Иван</Option>
+                <Option value="Петров Петр">Петров Петр</Option>
+                <Option value="Сидоров Сидор">Сидоров Сидор</Option>
+              </Select>
+            </Form.Item>
+          </div>
+        </div>
       </Card>
 
-      <Card>
-        <Text strong>ИТОГО: {totalAmount.toFixed(2)} ₽</Text>
-      </Card>
-
-      <Button type="primary" onClick={handleSubmit} style={{ marginTop: "16px" }}>
-        Сохранить заказ
-      </Button>
+      {/* Вкладки */}
+      <Tabs items={tabs} />
     </div>
-  );
-};
+  )
+}
 
-export default CreateOrder;
+export default CreateOrder
