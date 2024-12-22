@@ -12,9 +12,8 @@ import {
 } from "antd"
 import { MinusCircleOutlined } from "@ant-design/icons"
 
-const { TabPane } = Tabs
 const { Option } = Select
-const { Title, Text } = Typography
+const { Text } = Typography
 
 const CreateOrder = () => {
   const [orderItems, setOrderItems] = useState([])
@@ -23,6 +22,7 @@ const CreateOrder = () => {
   const [orderStatus, setOrderStatus] = useState("Новый")
   const [manager, setManager] = useState(null)
   const [suppliers, setSuppliers] = useState([])
+  const [orderNumber, setOrderNumber] = useState('24-2322 от 22.12.2024')
 
   const calculateOrderTotal = () => {
     return orderItems.reduce(
@@ -247,12 +247,22 @@ const CreateOrder = () => {
         >
           {/* Вторая строка */}
           <div>
+            
+              <Input
+                disabled
+                value={orderNumber}
+                onChange={(value) => setOrderNumber(value)}
+                style={{ width: "220px", fontWeight: "bold" }}
+              />  
+            
+          </div>
+          <div>
             <Form.Item label="Клиент" style={{ margin: 0 }}>
               <Select
                 showSearch
                 value={selectedClient}
                 onChange={(value) => setSelectedClient(value)}
-                style={{ width: "285px" }}
+                style={{ width: "275px" }}
                 placeholder="Выберите клиента"
               >
                 <Option value="ООО Ромашка">ООО Ромашка</Option>
@@ -261,6 +271,7 @@ const CreateOrder = () => {
               </Select>
             </Form.Item>
           </div>
+
           <div>
             <Form.Item label="Статус заказа" style={{ margin: 0 }}>
               <Select
