@@ -1,7 +1,11 @@
 import React from "react"
 import { Table, Tag, Button } from "antd"
+import { useNavigate } from "react-router-dom"
 
 const Orders = () => {
+
+  const navigate = useNavigate()
+  
   const dataSource = [
     {
       key: "1",
@@ -112,7 +116,7 @@ const Orders = () => {
         }}
       >
         <h1 style={{ margin: 0 }}>Заказы</h1>
-        <Button type="primary" onClick={() => navigate("/clients/create")} disabled>
+        <Button type="primary" onClick={() => navigate("/orders/create")} >
           Создать заказ
         </Button>
       </div>

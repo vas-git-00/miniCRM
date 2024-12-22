@@ -39,9 +39,8 @@ const CreateClient = () => {
         name: "",
         inn: "",
         kpp: "",
-        requisites: [
-          { bank: "", bic: "", account: "", correspondentAccount: "" },
-        ],
+        requisites: [],  // { bank: "", bic: "", account: "", correspondentAccount: "" },
+      
       },
     ])
   }

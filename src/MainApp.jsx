@@ -6,6 +6,7 @@ import Clients from "./pages/Clients"
 import CreateClient from "./pages/CreateClient"
 import Orders from "./pages/Orders"
 import authStore from "./store/authStore"
+import CreateOrder from "./pages/CreateOrder"
 
 const { Header, Content, Footer } = Layout
 
@@ -62,6 +63,7 @@ const MainApp = () => {
           <Route path="clients" element={<Clients />} />
           <Route path="clients/create" element={<CreateClient />} />
           <Route path="orders" element={<Orders />} />
+          <Route path="orders/create" element={<CreateOrder />} />
         </Routes>
       </Content>
       <Footer
