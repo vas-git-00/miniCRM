@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom"
 const Orders = () => {
 
   const navigate = useNavigate()
-  
+
   const dataSource = [
     {
       key: "1",
@@ -82,7 +82,7 @@ const Orders = () => {
     {
       title: "Итого",
       dataIndex: "amount",
-      key: "amount",
+      key: "amount", 
     },
     {
       title: "Долг",
