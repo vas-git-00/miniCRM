@@ -1,5 +1,5 @@
 import React from "react"
-import { Table, Tag, Button } from "antd"
+import { Table, Button } from "antd"
 import { useNavigate } from "react-router-dom"
 
 const Orders = () => {

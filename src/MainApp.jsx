@@ -1,12 +1,13 @@
-import React, { useState } from "react"
+import React from "react"
 import { Routes, Route, Link, Navigate } from "react-router-dom"
-import { Layout, Menu, Space, Dropdown } from "antd"
+import { Layout, Menu, Space } from "antd"
 import { UserOutlined, PoweroffOutlined } from "@ant-design/icons"
 import Clients from "./pages/Clients"
 import CreateClient from "./pages/CreateClient"
 import Orders from "./pages/Orders"
 import authStore from "./store/authStore"
 import CreateOrder from "./pages/CreateOrder"
+import PaymentRegister from "./pages/paymentRegister"
 
 const { Header, Content, Footer } = Layout
 
@@ -18,6 +19,10 @@ const menuItems = [
   {
     key: "2",
     label: <Link to="/orders">Заказы</Link>,
+  }, 
+  {
+    key: "3",
+    label: <Link to="/payments">Реестр платежей</Link>,
   },
 ]
 
@@ -39,6 +44,7 @@ const MainApp = () => {
           padding: "0px",
           display: "flex",
           justifyContent: "space-between",
+          width: "100%"
         }}
       >
         <Menu
@@ -46,7 +52,7 @@ const MainApp = () => {
           mode="horizontal"
           items={menuItems}
           defaultSelectedKeys={["1"]}
-          style={{ height: "48px", lineHeight: "48px", marginLeft: "21px" }}
+          style={{ height: "48px", lineHeight: "48px", marginLeft: "21px", width: "100%" }}
         />
 
         <Space
@@ -64,6 +70,8 @@ const MainApp = () => {
           <Route path="clients/create" element={<CreateClient />} />
           <Route path="orders" element={<Orders />} />
           <Route path="orders/create" element={<CreateOrder />} />
+          <Route path="payments" element={<PaymentRegister />} />
+
         </Routes>
       </Content>
       <Footer

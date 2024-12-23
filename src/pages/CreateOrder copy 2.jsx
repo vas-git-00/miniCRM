@@ -455,10 +455,24 @@ const CreateOrder = () => {
         </Card>
       ),
     },
+
     {
       key: "3",
-      label: "Инфо по клиенту",
-      children: <div>Инфо по клиенту</div>,
+      label: (
+        <Badge dot={!!comment.trim()} offset={[5, 0]}>
+          Комментарий
+        </Badge>
+      ),
+      children: (
+        <Card>
+          <Input.TextArea
+            rows={6}
+            value={comment}
+            placeholder="Введите комментарий"
+            onChange={(e) => setComment(e.target.value)} // Здесь обработка
+          />
+        </Card>
+      ),
     },
   ]
 
@@ -616,3 +630,5 @@ const CreateOrder = () => {
 }
 
 export default CreateOrder
+
+

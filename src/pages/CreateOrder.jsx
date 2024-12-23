@@ -36,7 +36,44 @@ const CreateOrder = () => {
   const [orderNumber, setOrderNumber] = useState("24-2322 от 22.12.2024")
   const [loading, setLoading] = useState(false) // Состояние загрузки
   const [saved, setSaved] = useState(false) // Состояние сохранения
-  const [comment, setComment] = useState("");
+  const [comment, setComment] = useState("")
+  const [margin, setMargin] = useState(0)
+
+  // Функция для расчёта маржи
+  useEffect(() => {
+    const totalSellingPrice = orderItems.reduce(
+      (acc, item) => acc + (item.sellingPrice || 0),
+      0
+    )
+    const totalPurchasePrice = orderItems.reduce(
+      (acc, item) =>
+        acc +
+        (item.purchasePrice || 0) +
+        (item.children || []).reduce(
+          (childAcc, child) => childAcc + (child.purchasePrice || 0),
+          0
+        ),
+      0
+    )
+    setMargin(totalSellingPrice - totalPurchasePrice)
+  }, [orderItems])
+
+    // Загружаем данные из LocalStorage при монтировании компонента
+    useEffect(() => {
+      const savedPayments = JSON.parse(localStorage.getItem("incomingPayments"));
+      if (savedPayments) {
+        setIncomingPayments(savedPayments);
+      }
+    }, []);
+  
+    // Сохраняем данные в LocalStorage, когда состояние incomingPayments изменяется
+    useEffect(() => {
+      if (incomingPayments.length > 0) {
+        localStorage.setItem("incomingPayments", JSON.stringify(incomingPayments));
+      }
+    }, [incomingPayments]);
+
+
 
   const saveOrderData = async () => {
     try {
@@ -48,6 +85,8 @@ const CreateOrder = () => {
         selectedClient,
         manager,
         orderItems,
+        comment,
+
       }
 
       // Имитируем запрос на сохранение
@@ -66,10 +105,7 @@ const CreateOrder = () => {
   // Сохранение при изменении данных
   useEffect(() => {
     saveOrderData()
-  }, [orderItems, selectedClient, orderStatus, manager])
-
- 
-
+  }, [orderItems, selectedClient, orderStatus, manager, comment])
 
   const calculateOrderTotal = () => {
     return orderItems.reduce(
@@ -94,8 +130,8 @@ const CreateOrder = () => {
       supplier: null,
       quantity: null,
       purchasePrice: null,
-      sellingPrice: null,
-      additionalCosts: [], // Новое поле для дополнительных расходов
+      sellingPrice: null
+      //additionalCosts: [], // Новое поле для дополнительных расходов
     }
     setOrderItems([...orderItems, newItem])
     recalculateSuppliers([...orderItems, newItem])
@@ -112,313 +148,313 @@ const CreateOrder = () => {
     setOrderItems(orderItems.filter((item) => item.id !== id))
   }
 
-  
-
-
   const tabs = [
     {
       key: "1",
       label: "Состав заказа",
       children: (
-        <Card>
-        <Card title="Позиции заказа" style={{ marginBottom: "16px" }}>
-  {orderItems.map((item, index) => (
-    <div key={item.id} style={{ marginBottom: "8px" }}>
-      <Space
-        style={{ display: "flex" }}
-        align="baseline"
-      >
-        <Text style={{ width: "40px" }}>{index + 1}</Text>
-        <Select
-          showSearch
-          value={item.position}
-          onChange={(value) =>
-            setOrderItems(
-              orderItems.map((o) =>
-                o.id === item.id ? { ...o, position: value } : o
-              )
-            )
-          }
-          style={{ width: "200px" }}
-          placeholder="Позиция"
-        >
-          <Option value="Бирки">Бирки</Option>
-          <Option value="Этикетки">Этикетки</Option>
-          <Option value="Наклейки">Наклейки</Option>
-        </Select>
-        <Input
-          placeholder="Название"
-          value={item.note}
-          onChange={(e) =>
-            setOrderItems(
-              orderItems.map((o) =>
-                o.id === item.id ? { ...o, note: e.target.value } : o
-              )
-            )
-          }
-          style={{ width: "200px" }}
-        />
-        <Input
-          type="number"
-          placeholder="Кол-во"
-          value={item.quantity}
-          onChange={(e) =>
-            setOrderItems(
-              orderItems.map((o) =>
-                o.id === item.id
-                  ? { ...o, quantity: parseFloat(e.target.value) }
-                  : o
-              )
-            )
-          }
-          style={{ width: "100px" }}
-        />
-        <Input
-          type="number"
-          placeholder="Продажа, руб."
-          value={item.sellingPrice}
-          onChange={(e) =>
-            setOrderItems(
-              orderItems.map((o) =>
-                o.id === item.id
-                  ? { ...o, sellingPrice: parseFloat(e.target.value) }
-                  : o
-              )
-            )
-          }
-          style={{
-            width: "140px",
-            appearance: "none",
-            MozAppearance: "textfield",
-          }}
-        />
-        <Select
-          showSearch
-          value={item.supplier}
-          onChange={(value) =>
-            setOrderItems(
-              orderItems.map((o) =>
-                o.id === item.id ? { ...o, supplier: value } : o
-              )
-            )
-          }
-          style={{ width: "250px", marginLeft: "16px" }}
-          placeholder="Поставщик"
-        >
-          <Option value="ПроПринт">ПроПринт</Option>
-          <Option value="Шалохин">Шалохин</Option>
-          <Option value="2 клена">2 клена</Option>
-        </Select>
-        <Input
-          type="number"
-          placeholder="Закупка, руб."
-          value={item.purchasePrice}
-          onChange={(e) =>
-            setOrderItems(
-              orderItems.map((o) =>
-                o.id === item.id
-                  ? { ...o, purchasePrice: parseFloat(e.target.value) }
-                  : o
-              )
-            )
-          }
-          style={{
-            width: "140px",
-            appearance: "none",
-            MozAppearance: "textfield",
-          }}
-        />
-        <Popconfirm
-          title="Удалить эту позицию?"
-          onConfirm={() => deleteOrderItem(item.id)}
-          okText="Да"
-          cancelText="Нет"
-        >
-          <MinusCircleOutlined
-            style={{ color: "red", fontSize: "16px", cursor: "pointer" }}
-          />
-        </Popconfirm>
-        <PlusCircleOutlined
-          style={{
-            color: "orange",
-            fontSize: "16px",
-            cursor: "pointer",
-            marginLeft: "8px",
-          }}
-          onClick={() =>
-            setOrderItems([
-              ...orderItems.map((o) =>
-                o.id === item.id
-                  ? {
-                      ...o,
-                      children: [
-                        ...(o.children || []),
-                        {
-                          id: Date.now(),
-                          supplier: null,
-                          purchasePrice: null,
-                        },
-                      ],
-                    }
-                  : o
-              ),
-            ])
-          }
-        />
-      </Space>
-      {(item.children || []).map((child) => (
-        <Space
-          key={child.id}
-          style={{
-            display: "flex",
-            marginLeft: "703px", // Отступ для дочерних элементов
-            marginTop: "8px",
-          }}
-          align="baseline"
-        >
-          <Select
-            showSearch
-            value={child.supplier}
-            onChange={(value) =>
-              setOrderItems(
-                orderItems.map((o) =>
-                  o.id === item.id
-                    ? {
-                        ...o,
-                        children: o.children.map((c) =>
-                          c.id === child.id ? { ...c, supplier: value } : c
-                        ),
-                      }
-                    : o
-                )
-              )
+        <div>
+          <Card
+            title="Позиции заказа"
+            style={{ marginBottom: "16px" }}
+            extra={
+              <Button type="dashed" onClick={addOrderItem} block>
+                Добавить позицию
+              </Button>
             }
-            style={{ width: "250px" }}
-            placeholder="Поставщик"
           >
-            <Option value="ПроПринт">ПроПринт</Option>
-            <Option value="Шалохин">Шалохин</Option>
-            <Option value="2 клена">2 клена</Option>
-          </Select>
-          <Input
-            type="number"
-            placeholder="Закупка, руб."
-            value={child.purchasePrice}
-            onChange={(e) =>
-              setOrderItems(
-                orderItems.map((o) =>
-                  o.id === item.id
-                    ? {
-                        ...o,
-                        children: o.children.map((c) =>
-                          c.id === child.id
+            {orderItems.map((item, index) => (
+              <div key={item.id} style={{ marginBottom: "8px" }}>
+                <Space style={{ display: "flex" }} align="baseline">
+                  <Text style={{ width: "40px" }}>{index + 1}</Text>
+                  <Select
+                    showSearch
+                    value={item.position}
+                    onChange={(value) =>
+                      setOrderItems(
+                        orderItems.map((o) =>
+                          o.id === item.id ? { ...o, position: value } : o
+                        )
+                      )
+                    }
+                    style={{ width: "200px" }}
+                    placeholder="Позиция"
+                  >
+                    <Option value="Бирки">Бирки</Option>
+                    <Option value="Этикетки">Этикетки</Option>
+                    <Option value="Наклейки">Наклейки</Option>
+                  </Select>
+                  <Input
+                    placeholder="Название"
+                    value={item.note}
+                    onChange={(e) =>
+                      setOrderItems(
+                        orderItems.map((o) =>
+                          o.id === item.id ? { ...o, note: e.target.value } : o
+                        )
+                      )
+                    }
+                    style={{ width: "200px" }}
+                  />
+                  <Input
+                    type="number"
+                    placeholder="Кол-во"
+                    value={item.quantity}
+                    onChange={(e) =>
+                      setOrderItems(
+                        orderItems.map((o) =>
+                          o.id === item.id
+                            ? { ...o, quantity: parseFloat(e.target.value) }
+                            : o
+                        )
+                      )
+                    }
+                    style={{ width: "100px" }}
+                  />
+                  <Input
+                    type="number"
+                    placeholder="Продажа, руб."
+                    value={item.sellingPrice}
+                    onChange={(e) =>
+                      setOrderItems(
+                        orderItems.map((o) =>
+                          o.id === item.id
+                            ? { ...o, sellingPrice: parseFloat(e.target.value) }
+                            : o
+                        )
+                      )
+                    }
+                    style={{
+                      width: "140px",
+                      appearance: "none",
+                      MozAppearance: "textfield",
+                    }}
+                  />
+                  <Select
+                    showSearch
+                    value={item.supplier}
+                    onChange={(value) =>
+                      setOrderItems(
+                        orderItems.map((o) =>
+                          o.id === item.id ? { ...o, supplier: value } : o
+                        )
+                      )
+                    }
+                    style={{ width: "250px", marginLeft: "16px" }}
+                    placeholder="Поставщик"
+                  >
+                    <Option value="ПроПринт">ПроПринт</Option>
+                    <Option value="Шалохин">Шалохин</Option>
+                    <Option value="2 клена">2 клена</Option>
+                  </Select>
+                  <Input
+                    type="number"
+                    placeholder="Закупка, руб."
+                    value={item.purchasePrice}
+                    onChange={(e) =>
+                      setOrderItems(
+                        orderItems.map((o) =>
+                          o.id === item.id
                             ? {
-                                ...c,
+                                ...o,
                                 purchasePrice: parseFloat(e.target.value),
                               }
-                            : c
+                            : o
+                        )
+                      )
+                    }
+                    style={{
+                      width: "140px",
+                      appearance: "none",
+                      MozAppearance: "textfield",
+                    }}
+                  />
+                  <Popconfirm
+                    title="Удалить позицию?"
+                    onConfirm={() => deleteOrderItem(item.id)}
+                    okText="Да"
+                    cancelText="Нет"
+                  >
+                    <MinusCircleOutlined
+                      style={{
+                        color: "red",
+                        fontSize: "16px",
+                        cursor: "pointer",
+                      }}
+                    />
+                  </Popconfirm>
+                  <PlusCircleOutlined
+                    style={{
+                      color: "orange",
+                      fontSize: "16px",
+                      cursor: "pointer",
+                      marginLeft: "8px",
+                    }}
+                    onClick={() =>
+                      setOrderItems([
+                        ...orderItems.map((o) =>
+                          o.id === item.id
+                            ? {
+                                ...o,
+                                children: [
+                                  ...(o.children || []),
+                                  {
+                                    id: Date.now(),
+                                    supplier: null,
+                                    purchasePrice: null,
+                                  },
+                                ],
+                              }
+                            : o
                         ),
+                      ])
+                    }
+                  />
+                </Space>
+                {(item.children || []).map((child) => (
+                  <Space
+                    key={child.id}
+                    style={{
+                      display: "flex",
+                      marginLeft: "703px", // Отступ для дочерних элементов
+                      marginTop: "8px",
+                    }}
+                    align="baseline"
+                  >
+                    <Select
+                      showSearch
+                      value={child.supplier}
+                      onChange={(value) =>
+                        setOrderItems(
+                          orderItems.map((o) =>
+                            o.id === item.id
+                              ? {
+                                  ...o,
+                                  children: o.children.map((c) =>
+                                    c.id === child.id
+                                      ? { ...c, supplier: value }
+                                      : c
+                                  ),
+                                }
+                              : o
+                          )
+                        )
                       }
-                    : o
-                )
-              )
-            }
-            style={{
-              width: "140px",
-              appearance: "none",
-              MozAppearance: "textfield",
-            }}
-          />
-          <Popconfirm
-            title="Удалить эту строку?"
-            onConfirm={() =>
-              setOrderItems(
-                orderItems.map((o) =>
-                  o.id === item.id
-                    ? {
-                        ...o,
-                        children: o.children.filter((c) => c.id !== child.id),
+                      style={{ width: "250px" }}
+                      placeholder="Поставщик"
+                    >
+                      <Option value="ПроПринт">ПроПринт</Option>
+                      <Option value="Шалохин">Шалохин</Option>
+                      <Option value="2 клена">2 клена</Option>
+                    </Select>
+                    <Input
+                      type="number"
+                      placeholder="Закупка, руб."
+                      value={child.purchasePrice}
+                      onChange={(e) =>
+                        setOrderItems(
+                          orderItems.map((o) =>
+                            o.id === item.id
+                              ? {
+                                  ...o,
+                                  children: o.children.map((c) =>
+                                    c.id === child.id
+                                      ? {
+                                          ...c,
+                                          purchasePrice: parseFloat(
+                                            e.target.value
+                                          ),
+                                        }
+                                      : c
+                                  ),
+                                }
+                              : o
+                          )
+                        )
                       }
-                    : o
-                )
-              )
-            }
-            okText="Да"
-            cancelText="Нет"
-          >
-            <MinusCircleOutlined
-              style={{ color: "red", fontSize: "16px", cursor: "pointer" }}
+                      style={{
+                        width: "140px",
+                        appearance: "none",
+                        MozAppearance: "textfield",
+                      }}
+                    />
+                    <Popconfirm
+                      title="Удалить доп. расход?"
+                      onConfirm={() =>
+                        setOrderItems(
+                          orderItems.map((o) =>
+                            o.id === item.id
+                              ? {
+                                  ...o,
+                                  children: o.children.filter(
+                                    (c) => c.id !== child.id
+                                  ),
+                                }
+                              : o
+                          )
+                        )
+                      }
+                      okText="Да"
+                      cancelText="Нет"
+                    >
+                      <MinusCircleOutlined
+                        style={{
+                          color: "red",
+                          fontSize: "16px",
+                          cursor: "pointer",
+                        }}
+                      />
+                    </Popconfirm>
+                  </Space>
+                ))}
+              </div>
+            ))}
+          </Card>
+          <Card title="Комментарий" style={{ marginBottom: "16px" }}>
+            <Input.TextArea
+              rows={5}
+              placeholder="Введите комментарий"
+              value={comment}
+              onChange={(e) => setComment(e.target.value)} // Здесь обработка
             />
-          </Popconfirm>
-        </Space>
-      ))}
-    </div>
-  ))}
-  <Button
-    type="dashed"
-    onClick={addOrderItem}
-    style={{ marginTop: "8px" }}
-    block
-  >
-    Добавить новую позицию
-  </Button>
-        </Card>
-        <Card title="Комментарий" style={{ marginBottom: "16px" }}>
-        <Input.TextArea
-          rows={4}
-          placeholder="Введите комментарий"
-          onChange={(e) => console.log("Комментарий:", e.target.value)} // Здесь обработка
-        />
-      </Card>
-        </Card>
+          </Card>
+        </div>
       ),
     },
-    
+
     {
       key: "2",
-      label: (<Badge dot={!!comment.trim()} offset={[5, 0]}>
-      Комментарий
-    </Badge>),
-      children: (
-        <Card >
-        <Input.TextArea
-          rows={6}
-          value={comment}
-          placeholder="Введите комментарий"
-          onChange={(e) => setComment(e.target.value)} // Здесь обработка
-        />
-      </Card>
-      ),
-    },
-    {
-      key: "3",
       label: "Платежи",
       children: (
-        <Card title="Платежи" style={{ marginBottom: "16px" }}>
-          <Card title="Входящие платежи" style={{ marginBottom: "16px" }}>
-            <Button
-              type="dashed"
-              onClick={() => {
-                const newPayment = {
-                  id: Date.now(),
-                  number: incomingPayments.length + 1,
-                  paymentType: null,
-                  payer: selectedClient || "Клиент не выбран",
-                  details: null,
-                  amount: null,
-                  status: "Новый",
-                  manager: manager || "Менеджер не выбран",
-                  createdAt: new Date().toLocaleString(),
-                  updatedAt: new Date().toLocaleString(),
-                  return: false, // Флаг возврата
-                }
-                setIncomingPayments([...incomingPayments, newPayment])
-              }}
-              style={{ marginBottom: "16px" }}
-              disabled={!selectedClient} // Кнопка неактивна, если клиент не выбран
-            >
-              Добавить входящий платеж
-            </Button>
+        <div>
+          <Card
+            title="Входящие платежи"
+            extra={
+              <Button
+                type="dashed"
+                onClick={() => {
+                  const newPayment = {
+                    id: Date.now(),
+                    number: incomingPayments.length + 1,
+                    paymentType: null,
+                    payer: selectedClient || "Клиент не выбран",
+                    details: null,
+                    amount: null,
+                    status: "Новый",
+                    manager: manager || "Менеджер не выбран",
+                    createdAt: new Date().toLocaleString(),
+                    updatedAt: new Date().toLocaleString(),
+                    return: false, // Флаг возврата
+                  }
+                  setIncomingPayments([...incomingPayments, newPayment])
+                }}
+                disabled={!selectedClient} // Кнопка неактивна, если клиент не выбран
+              >
+                Добавить платеж
+              </Button>
+            }
+            style={{ marginBottom: "16px" }}
+          >
             {incomingPayments.map((payment, index) => (
               <Space
                 key={payment.id}
@@ -583,14 +619,10 @@ const CreateOrder = () => {
               </Space>
             ))}
           </Card>
-          
-
-
-        </Card>
+        </div>
       ),
     },
   ]
-
 
   return (
     <div>
@@ -623,7 +655,13 @@ const CreateOrder = () => {
               {calculateOrderDebt().toFixed(2)} ₽
             </Text>
           </div>
-          <div>
+          <div style={{ width: "210px" }}>
+            <Text strong>Маржа:</Text>
+            <Text style={{ color: "green", marginLeft: "8px" }}>
+              {margin.toFixed(2)} ₽
+            </Text>
+          </div>
+          <div style={{ width: "210px" }}>
             <Text strong>Статус оплаты:</Text>
             <Text style={{ marginLeft: "8px" }}>
               {(() => {
@@ -717,13 +755,13 @@ const CreateOrder = () => {
         <div
           style={{
             position: "fixed",
-            bottom: 20,
-            right: 20,
+            bottom: 0,
+            right: 15,
             zIndex: 1000,
             display: "flex",
             alignItems: "center",
             gap: "10px",
-            padding: "10px 20px",
+            padding: "5px 5px",
           }}
         >
           {loading ? (
