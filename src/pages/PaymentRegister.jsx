@@ -119,13 +119,11 @@ const PaymentRegister = () => {
   };
 
   const handleDrawerClose = () => {
-    // Сбрасываем состояние переключателей при закрытии окна
     setChecked1(false);
     setChecked2(false);
     setDrawerVisible(false);
   };
 
-  // Логика изменения состояния переключателей
   const handleSwitch1Change = (checked) => {
     if (checked) {
       setChecked1(true);
@@ -144,9 +142,8 @@ const PaymentRegister = () => {
     }
   };
 
-  // Логика активации кнопок
-  const isApproveButtonDisabled = !(checked1 && !checked2); // Кнопка активна только при включенном первом переключателе и выключенном втором
-  const isCancelButtonDisabled = !(checked2 && !checked1); // Кнопка активна только при включенном втором переключателе и выключенном первом
+  const isApproveButtonDisabled = !(checked1 && !checked2);
+  const isCancelButtonDisabled = !(checked2 && !checked1);
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
@@ -179,20 +176,19 @@ const PaymentRegister = () => {
       {/* Drawer для отображения деталей платежа */}
       <Drawer
         title={`Платеж #${selectedPayment?.payment}`}
-        width={600}
+        width={window.innerWidth < 768 ? 300 : 600} // уменьшаем ширину Drawer для мобильных устройств
         open={drawerVisible}
         onClose={handleDrawerClose}
         style={{ paddingBottom: 50 }}
       >
         <Form layout="vertical">
-          {/* Размещаем ID Платежа и Номер заказа в одной строке */}
           <Row gutter={16}>
-            <Col span={12}>
+            <Col xs={24} sm={12}>
               <Form.Item label="ID Платежа">
                 <Input value={selectedPayment?.payment} disabled />
               </Form.Item>
             </Col>
-            <Col span={12}>
+            <Col xs={24} sm={12}>
               <Form.Item label="Номер заказа">
                 <Input value={selectedPayment?.order} disabled />
               </Form.Item>
@@ -200,12 +196,12 @@ const PaymentRegister = () => {
           </Row>
 
           <Row gutter={16}>
-            <Col span={12}>
+            <Col xs={24} sm={12}>
               <Form.Item label="Тип платежа">
                 <Input value={selectedPayment?.payment_type} disabled />
               </Form.Item>
             </Col>
-            <Col span={12}>
+            <Col xs={24} sm={12}>
               <Form.Item label="Статус платежа">
                 <Input value={selectedPayment?.payment_status} disabled />
               </Form.Item>
@@ -225,7 +221,7 @@ const PaymentRegister = () => {
           </Form.Item>
 
           <Row gutter={16}>
-            <Col span={12}>
+            <Col xs={24} sm={12}>
               <Form.Item>
                 <Switch
                   checked={checked1}
@@ -235,7 +231,7 @@ const PaymentRegister = () => {
                 />
               </Form.Item>
             </Col>
-            <Col span={12}>
+            <Col xs={24} sm={12}>
               <Form.Item>
                 <Switch
                   checked={checked2}
@@ -248,23 +244,25 @@ const PaymentRegister = () => {
           </Row>
 
           <Row gutter={16}>
-            <Col span={12}>
+            <Col xs={24} sm={12}>
               <Form.Item>
                 <Button
                   type="primary"
-                  disabled={isApproveButtonDisabled} // кнопка активна только при включенном первом переключателе и выключенном втором
+                  disabled={isApproveButtonDisabled}
                   onClick={handleApprove}
+                  style={{ width: "100%" }}
                 >
                   Утвердить платеж
                 </Button>
               </Form.Item>
             </Col>
-            <Col span={12}>
+            <Col xs={24} sm={12}>
               <Form.Item>
                 <Button
                   danger
-                  disabled={isCancelButtonDisabled} // кнопка активна только при включенном втором переключателе и выключенном первом
+                  disabled={isCancelButtonDisabled}
                   onClick={handleCancel}
+                  style={{ width: "100%" }}
                 >
                   Отменить платеж
                 </Button>
