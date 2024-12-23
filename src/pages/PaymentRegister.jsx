@@ -25,6 +25,7 @@ const PaymentRegister = () => {
       payment: "10004",
       order: "24-1002",
       client: "Ромашка",
+      payment_type: "Исходящий",
       order_status: "В работе",
       pay_status: "Не оплачено",
       amount: "10 000,00",
@@ -38,6 +39,7 @@ const PaymentRegister = () => {
       payment: "10005",
       order: "24-1004",
       client: "ИП Васильев И.С.",
+      payment_type: "Входящий",
       order_status: "В работе",
       pay_status: "Оплачено",
       amount: "12 000,00",
@@ -117,6 +119,9 @@ const PaymentRegister = () => {
   };
 
   const handleDrawerClose = () => {
+    // Сбрасываем состояние переключателей при закрытии окна
+    setChecked1(false);
+    setChecked2(false);
     setDrawerVisible(false);
   };
 
@@ -221,7 +226,7 @@ const PaymentRegister = () => {
 
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item label="Галочка 1">
+              <Form.Item>
                 <Switch
                   checked={checked1}
                   onChange={handleSwitch1Change}
@@ -231,7 +236,7 @@ const PaymentRegister = () => {
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item label="Галочка 2">
+              <Form.Item>
                 <Switch
                   checked={checked2}
                   onChange={handleSwitch2Change}
