@@ -12,6 +12,9 @@ import {
   Spin,
   Popover,
   Badge,
+  Drawer,
+  Checkbox,
+  message,
 } from "antd"
 import {
   MinusCircleOutlined,
@@ -38,6 +41,7 @@ const CreateOrder = () => {
   const [saved, setSaved] = useState(false) // Состояние сохранения
   const [comment, setComment] = useState("")
   const [margin, setMargin] = useState(0)
+  const [isDrawerVisible, setIsDrawerVisible] = useState(false)
 
   // Функция для расчёта маржи
   useEffect(() => {
@@ -58,22 +62,20 @@ const CreateOrder = () => {
     setMargin(totalSellingPrice - totalPurchasePrice)
   }, [orderItems])
 
-    // Загружаем данные из LocalStorage при монтировании компонента
-    useEffect(() => {
-      const savedPayments = JSON.parse(localStorage.getItem("incomingPayments"));
-      if (savedPayments) {
-        setIncomingPayments(savedPayments);
-      }
-    }, []);
-  
-    // Сохраняем данные в LocalStorage, когда состояние incomingPayments изменяется
-    useEffect(() => {
-      if (incomingPayments.length > 0) {
-        localStorage.setItem("incomingPayments", JSON.stringify(incomingPayments));
-      }
-    }, [incomingPayments]);
+  // Загружаем данные из LocalStorage при монтировании компонента
+  useEffect(() => {
+    const savedPayments = JSON.parse(localStorage.getItem("incomingPayments"))
+    if (savedPayments) {
+      setIncomingPayments(savedPayments)
+    }
+  }, [])
 
-
+  // Сохраняем данные в LocalStorage, когда состояние incomingPayments изменяется
+  useEffect(() => {
+    if (incomingPayments.length > 0) {
+      localStorage.setItem("incomingPayments", JSON.stringify(incomingPayments))
+    }
+  }, [incomingPayments])
 
   const saveOrderData = async () => {
     try {
@@ -86,7 +88,6 @@ const CreateOrder = () => {
         manager,
         orderItems,
         comment,
-
       }
 
       // Имитируем запрос на сохранение
@@ -127,10 +128,16 @@ const CreateOrder = () => {
     const newItem = {
       id: Date.now(),
       position: null,
+      note: null,
       supplier: null,
-      quantity: null,
-      purchasePrice: null,
-      sellingPrice: null
+      //quantity: null,
+      //purchasePrice: null,
+      sellingPrice: null,
+      status: "Не выдано",
+      deliveryQuantity: 0, // Кол-во для выдачи
+      selected: true, // Чекбокс по умолчанию включен
+      quantity: 0, // Общее количество
+      delivered: 0, // Сколько уже выдано
       //additionalCosts: [], // Новое поле для дополнительных расходов
     }
     setOrderItems([...orderItems, newItem])
@@ -148,6 +155,49 @@ const CreateOrder = () => {
     setOrderItems(orderItems.filter((item) => item.id !== id))
   }
 
+  const handleDrawerOpen = () => {
+    // Рассчитать доступное количество для выдачи перед открытием Drawer
+    const updatedItems = orderItems.map((item) => ({
+      ...item,
+      deliveryQuantity: Math.max(0, item.quantity - item.delivered), // Остаток
+      selected: item.quantity > item.delivered, // Отключить чекбокс, если всё выдано
+    }))
+    setOrderItems(updatedItems)
+    setIsDrawerVisible(true)
+  }
+
+  const handleDrawerClose = () => {
+    setIsDrawerVisible(false)
+  }
+
+  const handleDelivery = () => {
+    const updatedItems = orderItems.map((item) => {
+      if (!item.selected || item.deliveryQuantity === 0) {
+        return item
+      }
+
+      const newDelivered = item.delivered + item.deliveryQuantity
+
+      let newStatus = "Не выдано"
+      if (newDelivered === item.quantity) {
+        newStatus = "Выдано"
+      } else if (newDelivered < item.quantity) {
+        newStatus = "Частично выдано"
+      }
+
+      return {
+        ...item,
+        delivered: newDelivered,
+        deliveryQuantity: 0, // Очистить поле
+        status: newStatus,
+      }
+    })
+
+    setOrderItems(updatedItems)
+    setIsDrawerVisible(false)
+    message.success("Позиции успешно отгружены!")
+  }
+
   const tabs = [
     {
       key: "1",
@@ -158,15 +208,25 @@ const CreateOrder = () => {
             title="Позиции заказа"
             style={{ marginBottom: "16px" }}
             extra={
-              <Button type="dashed" onClick={addOrderItem} block>
-                Добавить позицию
-              </Button>
+              <Space>
+                <Button type="dashed" onClick={addOrderItem} block>
+                  Добавить позицию
+                </Button>
+                <Button type="dashed" onClick={handleDrawerOpen} block>
+                  Отгрузка
+                </Button>
+              </Space>
             }
           >
             {orderItems.map((item, index) => (
               <div key={item.id} style={{ marginBottom: "8px" }}>
                 <Space style={{ display: "flex" }} align="baseline">
-                  <Text style={{ width: "40px" }}>{index + 1}</Text>
+                  {/* <Text style={{ width: "40px" }}>{index + 1}</Text> */}
+                  <Input
+                    value={index + 1}
+                    disabled
+                    style={{ width: "30px", padding: "4px" }}
+                  />
                   <Select
                     showSearch
                     value={item.position}
@@ -209,7 +269,7 @@ const CreateOrder = () => {
                         )
                       )
                     }
-                    style={{ width: "100px" }}
+                    style={{ width: "110px" }}
                   />
                   <Input
                     type="number"
@@ -230,6 +290,22 @@ const CreateOrder = () => {
                       MozAppearance: "textfield",
                     }}
                   />
+
+                  <span style={{ marginLeft: "16px" }}>
+                    {item.delivered}/{item.quantity} (
+                    {item.status === "Выдано" ? (
+                      <strong style={{ color: "green" }}>Выдано</strong>
+                    ) : item.status === "Частично выдано" ? (
+                      <strong style={{ color: "orange" }}>
+                        Частично выдано
+                      </strong>
+                    ) : (
+                      <strong style={{ color: "red" }}>Не выдано</strong>
+                    )}
+                    )
+                  </span>
+
+                  {/* ПОСТАВЩИК 
                   <Select
                     showSearch
                     value={item.supplier}
@@ -246,7 +322,9 @@ const CreateOrder = () => {
                     <Option value="ПроПринт">ПроПринт</Option>
                     <Option value="Шалохин">Шалохин</Option>
                     <Option value="2 клена">2 клена</Option>
-                  </Select>
+                  </Select>  */}
+
+                  {/* ЗАКУПКА 
                   <Input
                     type="number"
                     placeholder="Закупка, руб."
@@ -268,7 +346,8 @@ const CreateOrder = () => {
                       appearance: "none",
                       MozAppearance: "textfield",
                     }}
-                  />
+                  /> */}
+
                   <Popconfirm
                     title="Удалить позицию?"
                     onConfirm={() => deleteOrderItem(item.id)}
@@ -311,12 +390,13 @@ const CreateOrder = () => {
                     }
                   />
                 </Space>
+
                 {(item.children || []).map((child) => (
                   <Space
                     key={child.id}
                     style={{
                       display: "flex",
-                      marginLeft: "703px", // Отступ для дочерних элементов
+                      marginLeft: "38px", // Отступ для дочерних элементов
                       marginTop: "8px",
                     }}
                     align="baseline"
@@ -418,6 +498,82 @@ const CreateOrder = () => {
               onChange={(e) => setComment(e.target.value)} // Здесь обработка
             />
           </Card>
+
+          {/* Drawer компонент ОТГРУЗКА*/}
+          <Drawer
+            title="Отгрузка по заказу"
+            placement="right"
+            onClose={handleDrawerClose}
+            open={isDrawerVisible}
+            width={600}
+          >
+            {orderItems.map((item, index) => (
+              <div key={item.id} style={{ marginBottom: "8px" }}>
+                <Space style={{ display: "flex" }} align="baseline">
+                  <Checkbox
+                    checked={item.selected}
+                    disabled={item.quantity === item.delivered} // Заблокировать, если всё выдано
+                    onChange={(e) =>
+                      setOrderItems(
+                        orderItems.map((o) =>
+                          o.id === item.id
+                            ? { ...o, selected: e.target.checked }
+                            : o
+                        )
+                      )
+                    }
+                  />
+                  <Input
+                    value={index + 1}
+                    disabled
+                    style={{ width: "30px", padding: "4px" }}
+                  />
+                  <Input
+                    value={item.position || ""}
+                    disabled
+                    style={{ width: "200px" }}
+                    placeholder="Позиция"
+                  />
+                  <Input
+                    type="number"
+                    placeholder="Кол-во для выдачи"
+                    disabled={item.quantity === item.delivered}
+                    value={item.deliveryQuantity}
+                    onChange={(e) =>
+                      setOrderItems(
+                        orderItems.map((o) =>
+                          o.id === item.id
+                            ? {
+                                ...o,
+                                deliveryQuantity: Math.min(
+                                  parseFloat(e.target.value) || 0,
+                                  o.quantity - o.delivered
+                                ),
+                              }
+                            : o
+                        )
+                      )
+                    }
+                    style={{ width: "150px" }}
+                  />
+                </Space>
+              </div>
+            ))}
+            <div style={{ marginTop: "16px", textAlign: "right" }}>
+              <Button
+                type="primary"
+                onClick={handleDelivery}
+                disabled={
+                  // Блокируем кнопку, если все чекбоксы сняты или все элементы заблокированы
+                  orderItems.every(
+                    (item) => !item.selected || item.quantity === item.delivered // Либо чекбокс снят, либо все выдано
+                  )
+                }
+              >
+                Отгрузить
+              </Button>
+            </div>
+          </Drawer>
         </div>
       ),
     },
