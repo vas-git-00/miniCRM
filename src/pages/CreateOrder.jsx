@@ -831,23 +831,27 @@ const CreateOrder = () => {
               {margin.toFixed(2)} ₽
             </Text>
           </div>
-          <div style={{ width: "210px" }}>
+          <div style={{ width: "250px" }}>
             <Text strong>Статус оплаты:</Text>
             <Text style={{ marginLeft: "8px" }}>
               {(() => {
                 const total = totalOrderPrice
-                const debt = calculateOrderDebt()
+                const payments = incomingPayments.reduce(
+                  (sum, payment) => sum + (payment.amount || 0),
+                  0
+                )
+                const debt = total - payments
 
-                if (total === 0 && debt > 0) {
-                  return "Ошибка: сумма заказа равна 0, но долг больше 0"
+                if (total === 0) {
+                  return "Не оплачено" // Если сумма заказа равна 0
+                } else if (payments === 0) {
+                  return "Не оплачено" // Если платежей нет
+                } else if (debt === 0) {
+                  return "Оплачено" // Если долг равен 0
                 } else if (debt === total) {
-                  return "Не оплачено"
-                } else if (debt === 0 && total > 0) {
-                  return "Оплачено"
-                } else if (debt === 0 && total === 0) {
-                  return "Не оплачено"
+                  return "Не оплачено" // Если платежей нет и долг равен сумме заказа
                 } else {
-                  return "Частично оплачено"
+                  return "Частично оплачено" // Если оплачена только часть
                 }
               })()}
             </Text>
