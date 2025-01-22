@@ -8,7 +8,7 @@ import Orders from "./pages/Orders"
 import authStore from "./store/authStore"
 import CreateOrder from "./pages/CreateOrder"
 import PaymentRegister from "./pages/paymentRegister"
-//import CreatePosition from "./pages/CreatePosition"
+import CreatePosition from "./pages/CreatePosition"
 
 const { Header, Content, Footer } = Layout
 
@@ -25,10 +25,10 @@ const menuItems = [
     key: "3",
     label: <Link to="/payments">Реестр платежей</Link>,
   },
-  //{
-  //  key: "4",
-  //  label: <Link to="/test">Тест</Link>,
-  //},
+  {
+    key: "4",
+    label: <Link to="/test">Тест</Link>,
+  },
 ]
 
 const MainApp = () => {
@@ -76,6 +76,9 @@ const MainApp = () => {
           <Route path="orders" element={<Orders />} />
           <Route path="orders/create" element={<CreateOrder />} />
           <Route path="payments" element={<PaymentRegister />} />
+
+          <Route path="test" element={<CreatePosition />} />
+
 
         </Routes>
       </Content>

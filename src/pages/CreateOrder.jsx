@@ -22,28 +22,26 @@ import {
   InfoCircleOutlined,
   PlusCircleOutlined,
 } from "@ant-design/icons"
+import debounce from "lodash/debounce"
 
 const { Option } = Select
 const { Text } = Typography
 
 const CreateOrder = () => {
   const [orderItems, setOrderItems] = useState([])
-  const [incomingPayments, setIncomingPayments] = useState([]) // Входящие платежи
-  const [outgoingPayments, setOutgoingPayments] = useState([]) // Исходящие платежи
+  const [incomingPayments, setIncomingPayments] = useState([])
   const [selectedClient, setSelectedClient] = useState(null)
   const [orderStatus, setOrderStatus] = useState("Новый")
   const [manager, setManager] = useState(null)
   const [suppliers, setSuppliers] = useState([])
-  const [supplier, setSupplier] = useState("")
-  const [purchaseAmount, setPurchaseAmount] = useState(0)
   const [orderNumber, setOrderNumber] = useState("24-2322 от 22.12.2024")
-  const [loading, setLoading] = useState(false) // Состояние загрузки
-  const [saved, setSaved] = useState(false) // Состояние сохранения
+  const [loading, setLoading] = useState(false)
+  const [saved, setSaved] = useState(false)
   const [comment, setComment] = useState("")
   const [margin, setMargin] = useState(0)
   const [isDrawerVisible, setIsDrawerVisible] = useState(false)
+  const [deliveries, setDeliveries] = useState([]) // Состояние для доставок
 
-  // Функция для расчёта маржи
   useEffect(() => {
     const totalSellingPrice = orderItems.reduce(
       (acc, item) => acc + (item.sellingPrice || 0),
@@ -62,25 +60,10 @@ const CreateOrder = () => {
     setMargin(totalSellingPrice - totalPurchasePrice)
   }, [orderItems])
 
-  // Загружаем данные из LocalStorage при монтировании компонента
-  useEffect(() => {
-    const savedPayments = JSON.parse(localStorage.getItem("incomingPayments"))
-    if (savedPayments) {
-      setIncomingPayments(savedPayments)
-    }
-  }, [])
-
-  // Сохраняем данные в LocalStorage, когда состояние incomingPayments изменяется
-  useEffect(() => {
-    if (incomingPayments.length > 0) {
-      localStorage.setItem("incomingPayments", JSON.stringify(incomingPayments))
-    }
-  }, [incomingPayments])
-
   const saveOrderData = async () => {
     try {
-      setLoading(true) // Показать Spin
-      setSaved(false) // Скрыть статус "Сохранено"
+      setLoading(true)
+      setSaved(false)
       const orderData = {
         orderNumber,
         orderStatus,
@@ -88,35 +71,51 @@ const CreateOrder = () => {
         manager,
         orderItems,
         comment,
+        deliveries, // Добавляем доставки в данные заказа
       }
-
-      // Имитируем запрос на сохранение
-      //await axios.post("/api/orders", orderData);
       console.log(orderData)
-
-      setLoading(false) // Скрыть Spin
-      setSaved(true) // Показать статус "Сохранено"
-      setTimeout(() => setSaved(false), 2000) // Убрать "Сохранено" через 2 сек.
+      setLoading(false)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
     } catch (error) {
-      setLoading(false) // Скрыть Spin
+      setLoading(false)
       console.error("Ошибка при сохранении:", error)
+      message.error("Ошибка при сохранении заказа")
     }
   }
 
-  // Сохранение при изменении данных
+  const debouncedSaveOrderData = debounce(saveOrderData, 1000)
+
   useEffect(() => {
-    saveOrderData()
-  }, [orderItems, selectedClient, orderStatus, manager, comment])
+    debouncedSaveOrderData()
+  }, [orderItems, selectedClient, orderStatus, manager, comment, deliveries])
 
   const calculateOrderTotal = () => {
-    return orderItems.reduce(
-      (total, item) => total + (item.sellingPrice || 0),
+    const totalOrderItems = orderItems.reduce(
+      (total, item) => total + (parseFloat(item.sellingPrice) || 0),
       0
     )
+    const totalDeliveries = deliveries.reduce(
+      (total, delivery) => total + (parseFloat(delivery.amount) || 0),
+      0
+    )
+    return totalOrderItems + totalDeliveries // Учитываем сумму доставок
+  }
+
+  const totalOrderPrice = Number(calculateOrderTotal()).toFixed(2)
+
+  const calculateItemTotalPrice = (quantity, pricePerUnit) => {
+    return quantity && pricePerUnit
+      ? (quantity * pricePerUnit).toFixed(2)
+      : "0.00"
+  }
+
+  const calculatePricePerUnit = (totalPrice, quantity) => {
+    return quantity && totalPrice ? (totalPrice / quantity).toFixed(2) : "0.00"
   }
 
   const calculateOrderDebt = () => {
-    const total = calculateOrderTotal()
+    const total = totalOrderPrice
     const payments = incomingPayments.reduce(
       (sum, payment) => sum + (payment.amount || 0),
       0
@@ -130,15 +129,13 @@ const CreateOrder = () => {
       position: null,
       note: null,
       supplier: null,
-      //quantity: null,
-      //purchasePrice: null,
+      pricePerUnit: null,
       sellingPrice: null,
       status: "Не выдано",
-      deliveryQuantity: 0, // Кол-во для выдачи
-      selected: true, // Чекбокс по умолчанию включен
-      quantity: 0, // Общее количество
-      delivered: 0, // Сколько уже выдано
-      //additionalCosts: [], // Новое поле для дополнительных расходов
+      deliveryQuantity: 0,
+      selected: true,
+      quantity: 0,
+      delivered: 0,
     }
     setOrderItems([...orderItems, newItem])
     recalculateSuppliers([...orderItems, newItem])
@@ -156,11 +153,10 @@ const CreateOrder = () => {
   }
 
   const handleDrawerOpen = () => {
-    // Рассчитать доступное количество для выдачи перед открытием Drawer
     const updatedItems = orderItems.map((item) => ({
       ...item,
-      deliveryQuantity: Math.max(0, item.quantity - item.delivered), // Остаток
-      selected: item.quantity > item.delivered, // Отключить чекбокс, если всё выдано
+      deliveryQuantity: Math.max(0, item.quantity - item.delivered),
+      selected: item.quantity > item.delivered,
     }))
     setOrderItems(updatedItems)
     setIsDrawerVisible(true)
@@ -188,7 +184,7 @@ const CreateOrder = () => {
       return {
         ...item,
         delivered: newDelivered,
-        deliveryQuantity: 0, // Очистить поле
+        deliveryQuantity: 0,
         status: newStatus,
       }
     })
@@ -196,6 +192,28 @@ const CreateOrder = () => {
     setOrderItems(updatedItems)
     setIsDrawerVisible(false)
     message.success("Позиции успешно отгружены!")
+  }
+
+  const addDelivery = () => {
+    const newDelivery = {
+      id: Date.now(),
+      type: null, // Тип доставки
+      address: "", // Адрес
+      amount: 0, // Сумма доставки
+    }
+    setDeliveries([...deliveries, newDelivery])
+  }
+
+  const updateDelivery = (id, updates) => {
+    setDeliveries((prevDeliveries) =>
+      prevDeliveries.map((delivery) =>
+        delivery.id === id ? { ...delivery, ...updates } : delivery
+      )
+    )
+  }
+
+  const deleteDelivery = (id) => {
+    setDeliveries(deliveries.filter((delivery) => delivery.id !== id))
   }
 
   const tabs = [
@@ -209,10 +227,22 @@ const CreateOrder = () => {
             style={{ marginBottom: "16px" }}
             extra={
               <Space>
-                <Button type="dashed" onClick={addOrderItem} block>
+                <Button
+                  type="dashed"
+                  onClick={addOrderItem}
+                  block
+                  disabled={!selectedClient}
+                >
                   Добавить позицию
                 </Button>
-                <Button type="dashed" onClick={handleDrawerOpen} block>
+                <Button
+                  type="dashed"
+                  onClick={handleDrawerOpen}
+                  block
+                  disabled={
+                    !selectedClient || !manager || orderItems.length === 0
+                  }
+                >
                   Отгрузка
                 </Button>
               </Space>
@@ -221,7 +251,6 @@ const CreateOrder = () => {
             {orderItems.map((item, index) => (
               <div key={item.id} style={{ marginBottom: "8px" }}>
                 <Space style={{ display: "flex" }} align="baseline">
-                  {/* <Text style={{ width: "40px" }}>{index + 1}</Text> */}
                   <Input
                     value={index + 1}
                     disabled
@@ -231,11 +260,7 @@ const CreateOrder = () => {
                     showSearch
                     value={item.position}
                     onChange={(value) =>
-                      setOrderItems(
-                        orderItems.map((o) =>
-                          o.id === item.id ? { ...o, position: value } : o
-                        )
-                      )
+                      updateOrderItem(item.id, { position: value })
                     }
                     style={{ width: "200px" }}
                     placeholder="Позиция"
@@ -248,51 +273,80 @@ const CreateOrder = () => {
                     placeholder="Название"
                     value={item.note}
                     onChange={(e) =>
-                      setOrderItems(
-                        orderItems.map((o) =>
-                          o.id === item.id ? { ...o, note: e.target.value } : o
-                        )
-                      )
+                      updateOrderItem(item.id, { note: e.target.value })
                     }
                     style={{ width: "200px" }}
                   />
                   <Input
                     type="number"
                     placeholder="Кол-во"
-                    value={item.quantity}
-                    onChange={(e) =>
-                      setOrderItems(
-                        orderItems.map((o) =>
-                          o.id === item.id
-                            ? { ...o, quantity: parseFloat(e.target.value) }
-                            : o
-                        )
-                      )
-                    }
+                    value={item.quantity || 0} // Убедимся, что значение всегда число
+                    onChange={(e) => {
+                      const newQuantity = parseFloat(e.target.value) || 0
+
+                      // Обновляем количество и пересчитываем цену
+                      updateOrderItem(item.id, {
+                        quantity: newQuantity,
+                        pricePerUnit: (item.sellingPrice || 0) / newQuantity,
+                      })
+                    }}
                     style={{ width: "110px" }}
                   />
                   <Input
-                    type="number"
-                    placeholder="Продажа, руб."
-                    value={item.sellingPrice}
-                    onChange={(e) =>
-                      setOrderItems(
-                        orderItems.map((o) =>
-                          o.id === item.id
-                            ? { ...o, sellingPrice: parseFloat(e.target.value) }
-                            : o
-                        )
-                      )
-                    }
-                    style={{
-                      width: "140px",
-                      appearance: "none",
-                      MozAppearance: "textfield",
+                    type="text"
+                    placeholder="Цена, руб."
+                    value={
+                      item.pricePerUnit !== null &&
+                      item.pricePerUnit !== undefined
+                        ? item.pricePerUnit.toFixed(2).replace(".", ",")
+                        : ""
+                    } // Отображаем запятую
+                    readOnly // Поле только для чтения
+                    style={{ width: "140px" }}
+                  />
+                  <Input
+                    type="text"
+                    placeholder="Сумма, руб."
+                    value={item.sellingPriceInput || ""} // Используем сырой ввод
+                    onChange={(e) => {
+                      const value = e.target.value
+
+                      // Разрешаем ввод цифр, одной точки или одной запятой, и ограничиваем количество знаков после запятой до двух
+                      if (/^\d*[,.]?\d{0,2}$/.test(value)) {
+                        // Сохраняем сырой ввод
+                        updateOrderItem(item.id, {
+                          sellingPriceInput: value,
+                        })
+
+                        // Заменяем запятую на точку для корректного преобразования в число
+                        const numericValue =
+                          parseFloat(value.replace(",", ".")) || 0
+
+                        // Обновляем сумму и пересчитываем цену
+                        updateOrderItem(item.id, {
+                          sellingPrice: numericValue,
+                          pricePerUnit: numericValue / (item.quantity || 1),
+                        })
+                      }
                     }}
+                    onBlur={() => {
+                      // Форматируем значение при потере фокуса
+                      if (
+                        item.sellingPrice !== null &&
+                        item.sellingPrice !== undefined
+                      ) {
+                        updateOrderItem(item.id, {
+                          sellingPriceInput: item.sellingPrice
+                            .toFixed(2)
+                            .replace(".", ","),
+                        })
+                      }
+                    }}
+                    style={{ width: "140px" }}
                   />
 
                   <span style={{ marginLeft: "16px" }}>
-                    {item.delivered}/{item.quantity} (
+                    {item.delivered} из {item.quantity} (
                     {item.status === "Выдано" ? (
                       <strong style={{ color: "green" }}>Выдано</strong>
                     ) : item.status === "Частично выдано" ? (
@@ -304,49 +358,6 @@ const CreateOrder = () => {
                     )}
                     )
                   </span>
-
-                  {/* ПОСТАВЩИК 
-                  <Select
-                    showSearch
-                    value={item.supplier}
-                    onChange={(value) =>
-                      setOrderItems(
-                        orderItems.map((o) =>
-                          o.id === item.id ? { ...o, supplier: value } : o
-                        )
-                      )
-                    }
-                    style={{ width: "250px", marginLeft: "16px" }}
-                    placeholder="Поставщик"
-                  >
-                    <Option value="ПроПринт">ПроПринт</Option>
-                    <Option value="Шалохин">Шалохин</Option>
-                    <Option value="2 клена">2 клена</Option>
-                  </Select>  */}
-
-                  {/* ЗАКУПКА 
-                  <Input
-                    type="number"
-                    placeholder="Закупка, руб."
-                    value={item.purchasePrice}
-                    onChange={(e) =>
-                      setOrderItems(
-                        orderItems.map((o) =>
-                          o.id === item.id
-                            ? {
-                                ...o,
-                                purchasePrice: parseFloat(e.target.value),
-                              }
-                            : o
-                        )
-                      )
-                    }
-                    style={{
-                      width: "140px",
-                      appearance: "none",
-                      MozAppearance: "textfield",
-                    }}
-                  /> */}
 
                   <Popconfirm
                     title="Удалить позицию?"
@@ -370,23 +381,16 @@ const CreateOrder = () => {
                       marginLeft: "8px",
                     }}
                     onClick={() =>
-                      setOrderItems([
-                        ...orderItems.map((o) =>
-                          o.id === item.id
-                            ? {
-                                ...o,
-                                children: [
-                                  ...(o.children || []),
-                                  {
-                                    id: Date.now(),
-                                    supplier: null,
-                                    purchasePrice: null,
-                                  },
-                                ],
-                              }
-                            : o
-                        ),
-                      ])
+                      updateOrderItem(item.id, {
+                        children: [
+                          ...(item.children || []),
+                          {
+                            id: Date.now(),
+                            supplier: null,
+                            purchasePrice: null,
+                          },
+                        ],
+                      })
                     }
                   />
                 </Space>
@@ -396,7 +400,7 @@ const CreateOrder = () => {
                     key={child.id}
                     style={{
                       display: "flex",
-                      marginLeft: "38px", // Отступ для дочерних элементов
+                      marginLeft: "38px",
                       marginTop: "8px",
                     }}
                     align="baseline"
@@ -405,20 +409,11 @@ const CreateOrder = () => {
                       showSearch
                       value={child.supplier}
                       onChange={(value) =>
-                        setOrderItems(
-                          orderItems.map((o) =>
-                            o.id === item.id
-                              ? {
-                                  ...o,
-                                  children: o.children.map((c) =>
-                                    c.id === child.id
-                                      ? { ...c, supplier: value }
-                                      : c
-                                  ),
-                                }
-                              : o
-                          )
-                        )
+                        updateOrderItem(item.id, {
+                          children: item.children.map((c) =>
+                            c.id === child.id ? { ...c, supplier: value } : c
+                          ),
+                        })
                       }
                       style={{ width: "250px" }}
                       placeholder="Поставщик"
@@ -432,25 +427,16 @@ const CreateOrder = () => {
                       placeholder="Закупка, руб."
                       value={child.purchasePrice}
                       onChange={(e) =>
-                        setOrderItems(
-                          orderItems.map((o) =>
-                            o.id === item.id
+                        updateOrderItem(item.id, {
+                          children: item.children.map((c) =>
+                            c.id === child.id
                               ? {
-                                  ...o,
-                                  children: o.children.map((c) =>
-                                    c.id === child.id
-                                      ? {
-                                          ...c,
-                                          purchasePrice: parseFloat(
-                                            e.target.value
-                                          ),
-                                        }
-                                      : c
-                                  ),
+                                  ...c,
+                                  purchasePrice: parseFloat(e.target.value),
                                 }
-                              : o
-                          )
-                        )
+                              : c
+                          ),
+                        })
                       }
                       style={{
                         width: "140px",
@@ -461,18 +447,11 @@ const CreateOrder = () => {
                     <Popconfirm
                       title="Удалить доп. расход?"
                       onConfirm={() =>
-                        setOrderItems(
-                          orderItems.map((o) =>
-                            o.id === item.id
-                              ? {
-                                  ...o,
-                                  children: o.children.filter(
-                                    (c) => c.id !== child.id
-                                  ),
-                                }
-                              : o
-                          )
-                        )
+                        updateOrderItem(item.id, {
+                          children: item.children.filter(
+                            (c) => c.id !== child.id
+                          ),
+                        })
                       }
                       okText="Да"
                       cancelText="Нет"
@@ -490,16 +469,96 @@ const CreateOrder = () => {
               </div>
             ))}
           </Card>
+
+          <Card
+            title="Доставка"
+            style={{ marginBottom: "16px" }}
+            extra={
+              <Button
+                type="dashed"
+                onClick={addDelivery}
+                block
+                disabled={!selectedClient}
+              >
+                Добавить доставку
+              </Button>
+            }
+          >
+            {deliveries.map((delivery, index) => (
+              <div key={delivery.id} style={{ marginBottom: "8px" }}>
+                <Space style={{ display: "flex" }} align="baseline">
+                  <Input
+                    value={index + 1}
+                    disabled
+                    style={{ width: "30px", padding: "4px" }}
+                  />
+                  <Select
+                    value={delivery.type}
+                    onChange={(value) =>
+                      updateDelivery(delivery.id, { type: value })
+                    }
+                    style={{ width: "200px" }}
+                    placeholder="Тип доставки"
+                  >
+                    <Option value="Пеший курьер">Пеший курьер</Option>
+                    <Option value="Достависта">Достависта</Option>
+                    <Option value="Яндекс.Доставка">Яндекс.Доставка</Option>
+                  </Select>
+                  <Input
+                    placeholder="Адрес"
+                    value={delivery.address}
+                    onChange={(e) =>
+                      updateDelivery(delivery.id, { address: e.target.value })
+                    }
+                    style={{ width: "200px" }}
+                  />
+                  <Input
+                    type="text"
+                    placeholder="Сумма, руб."
+                    value={delivery.amount || ""}
+                    onChange={(e) => {
+                      const value = e.target.value
+
+                      // Разрешаем ввод цифр, одной точки или одной запятой, и ограничиваем количество знаков после запятой до двух
+                      if (/^\d*[,.]?\d{0,2}$/.test(value)) {
+                        // Заменяем запятую на точку для корректного преобразования в число
+                        const numericValue =
+                          parseFloat(value.replace(",", ".")) || 0
+
+                        // Обновляем сумму доставки
+                        updateDelivery(delivery.id, { amount: numericValue })
+                      }
+                    }}
+                    style={{ width: "140px" }}
+                  />
+                  <Popconfirm
+                    title="Удалить доставку?"
+                    onConfirm={() => deleteDelivery(delivery.id)}
+                    okText="Да"
+                    cancelText="Нет"
+                  >
+                    <MinusCircleOutlined
+                      style={{
+                        color: "red",
+                        fontSize: "16px",
+                        cursor: "pointer",
+                      }}
+                    />
+                  </Popconfirm>
+                </Space>
+              </div>
+            ))}
+          </Card>
+
           <Card title="Комментарий" style={{ marginBottom: "16px" }}>
             <Input.TextArea
               rows={5}
               placeholder="Введите комментарий"
               value={comment}
-              onChange={(e) => setComment(e.target.value)} // Здесь обработка
+              onChange={(e) => setComment(e.target.value)}
             />
           </Card>
 
-          {/* Drawer компонент ОТГРУЗКА*/}
           <Drawer
             title="Отгрузка по заказу"
             placement="right"
@@ -512,15 +571,9 @@ const CreateOrder = () => {
                 <Space style={{ display: "flex" }} align="baseline">
                   <Checkbox
                     checked={item.selected}
-                    disabled={item.quantity === item.delivered} // Заблокировать, если всё выдано
+                    disabled={item.quantity === item.delivered}
                     onChange={(e) =>
-                      setOrderItems(
-                        orderItems.map((o) =>
-                          o.id === item.id
-                            ? { ...o, selected: e.target.checked }
-                            : o
-                        )
-                      )
+                      updateOrderItem(item.id, { selected: e.target.checked })
                     }
                   />
                   <Input
@@ -531,8 +584,14 @@ const CreateOrder = () => {
                   <Input
                     value={item.position || ""}
                     disabled
-                    style={{ width: "200px" }}
+                    style={{ width: "160px" }}
                     placeholder="Позиция"
+                  />
+                  <Input
+                    value={item.note || ""}
+                    disabled
+                    style={{ width: "180px" }}
+                    placeholder="Название"
                   />
                   <Input
                     type="number"
@@ -540,21 +599,14 @@ const CreateOrder = () => {
                     disabled={item.quantity === item.delivered}
                     value={item.deliveryQuantity}
                     onChange={(e) =>
-                      setOrderItems(
-                        orderItems.map((o) =>
-                          o.id === item.id
-                            ? {
-                                ...o,
-                                deliveryQuantity: Math.min(
-                                  parseFloat(e.target.value) || 0,
-                                  o.quantity - o.delivered
-                                ),
-                              }
-                            : o
-                        )
-                      )
+                      updateOrderItem(item.id, {
+                        deliveryQuantity: Math.min(
+                          parseFloat(e.target.value) || 0,
+                          item.quantity - item.delivered
+                        ),
+                      })
                     }
-                    style={{ width: "150px" }}
+                    style={{ width: "135px" }}
                   />
                 </Space>
               </div>
@@ -563,12 +615,9 @@ const CreateOrder = () => {
               <Button
                 type="primary"
                 onClick={handleDelivery}
-                disabled={
-                  // Блокируем кнопку, если все чекбоксы сняты или все элементы заблокированы
-                  orderItems.every(
-                    (item) => !item.selected || item.quantity === item.delivered // Либо чекбокс снят, либо все выдано
-                  )
-                }
+                disabled={orderItems.every(
+                  (item) => !item.selected || item.quantity === item.delivered
+                )}
               >
                 Отгрузить
               </Button>
@@ -577,7 +626,6 @@ const CreateOrder = () => {
         </div>
       ),
     },
-
     {
       key: "2",
       label: "Платежи",
@@ -600,11 +648,13 @@ const CreateOrder = () => {
                     manager: manager || "Менеджер не выбран",
                     createdAt: new Date().toLocaleString(),
                     updatedAt: new Date().toLocaleString(),
-                    return: false, // Флаг возврата
+                    return: false,
                   }
                   setIncomingPayments([...incomingPayments, newPayment])
                 }}
-                disabled={!selectedClient} // Кнопка неактивна, если клиент не выбран
+                disabled={
+                  !selectedClient || !manager || orderItems.length === 0
+                }
               >
                 Добавить платеж
               </Button>
@@ -622,17 +672,7 @@ const CreateOrder = () => {
                   placeholder="Тип оплаты"
                   value={payment.paymentType}
                   onChange={(value) =>
-                    setIncomingPayments(
-                      incomingPayments.map((p) =>
-                        p.id === payment.id
-                          ? {
-                              ...p,
-                              paymentType: value,
-                              updatedAt: new Date().toLocaleString(),
-                            }
-                          : p
-                      )
-                    )
+                    updatePayment(payment.id, { paymentType: value })
                   }
                   style={{ width: "200px" }}
                 >
@@ -651,17 +691,7 @@ const CreateOrder = () => {
                   placeholder="Реквизиты"
                   value={payment.details}
                   onChange={(e) =>
-                    setIncomingPayments(
-                      incomingPayments.map((p) =>
-                        p.id === payment.id
-                          ? {
-                              ...p,
-                              details: e.target.value,
-                              updatedAt: new Date().toLocaleString(),
-                            }
-                          : p
-                      )
-                    )
+                    updatePayment(payment.id, { details: e.target.value })
                   }
                   style={{ width: "200px" }}
                 />
@@ -672,17 +702,7 @@ const CreateOrder = () => {
                   onChange={(e) => {
                     const value = parseFloat(e.target.value)
                     if (value <= calculateOrderDebt()) {
-                      setIncomingPayments(
-                        incomingPayments.map((p) =>
-                          p.id === payment.id
-                            ? {
-                                ...p,
-                                amount: value,
-                                updatedAt: new Date().toLocaleString(),
-                              }
-                            : p
-                        )
-                      )
+                      updatePayment(payment.id, { amount: value })
                     }
                   }}
                   style={{ width: "150px" }}
@@ -691,17 +711,7 @@ const CreateOrder = () => {
                   placeholder="Статус оплаты"
                   value={payment.status}
                   onChange={(value) =>
-                    setIncomingPayments(
-                      incomingPayments.map((p) =>
-                        p.id === payment.id
-                          ? {
-                              ...p,
-                              status: value,
-                              updatedAt: new Date().toLocaleString(),
-                            }
-                          : p
-                      )
-                    )
+                    updatePayment(payment.id, { status: value })
                   }
                   style={{ width: "150px" }}
                 >
@@ -713,19 +723,9 @@ const CreateOrder = () => {
                 <Button
                   type="primary"
                   danger
-                  onClick={() => {
-                    setIncomingPayments(
-                      incomingPayments.map((p) =>
-                        p.id === payment.id
-                          ? {
-                              ...p,
-                              return: !p.return,
-                              updatedAt: new Date().toLocaleString(),
-                            }
-                          : p
-                      )
-                    )
-                  }}
+                  onClick={() =>
+                    updatePayment(payment.id, { return: !payment.return })
+                  }
                 >
                   {payment.return ? "Возврат выполнен" : "Возврат"}
                 </Button>
@@ -780,6 +780,22 @@ const CreateOrder = () => {
     },
   ]
 
+  const updateOrderItem = (id, updates) => {
+    setOrderItems((prevItems) =>
+      prevItems.map((item) => (item.id === id ? { ...item, ...updates } : item))
+    )
+  }
+
+  const updatePayment = (id, updates) => {
+    setIncomingPayments((prevPayments) =>
+      prevPayments.map((payment) =>
+        payment.id === id
+          ? { ...payment, ...updates, updatedAt: new Date().toLocaleString() }
+          : payment
+      )
+    )
+  }
+
   return (
     <div>
       <div
@@ -793,16 +809,14 @@ const CreateOrder = () => {
         <h1 style={{ margin: 0 }}>Новый заказ</h1>
       </div>
 
-      {/* Информация по заказу */}
       <Card style={{ marginBottom: "20px" }}>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "16px" }}>
-          {/* Первая строка */}
           <div style={{ width: "220px" }}>
             <Text strong>Сумма заказа:</Text>
             <Text
               style={{ color: "green", fontWeight: "bold", marginLeft: "8px" }}
             >
-              {calculateOrderTotal().toFixed(2)} ₽
+              {totalOrderPrice} ₽
             </Text>
           </div>
           <div style={{ width: "220px" }}>
@@ -821,7 +835,7 @@ const CreateOrder = () => {
             <Text strong>Статус оплаты:</Text>
             <Text style={{ marginLeft: "8px" }}>
               {(() => {
-                const total = calculateOrderTotal()
+                const total = totalOrderPrice
                 const debt = calculateOrderDebt()
 
                 if (total === 0 && debt > 0) {
@@ -848,7 +862,6 @@ const CreateOrder = () => {
             marginTop: "16px",
           }}
         >
-          {/* Вторая строка */}
           <div>
             <Input
               disabled
@@ -903,10 +916,8 @@ const CreateOrder = () => {
         </div>
       </Card>
 
-      {/* Вкладки */}
       <Tabs items={tabs} />
 
-      {/* Spin в правом нижнем углу */}
       {(loading || saved) && (
         <div
           style={{
