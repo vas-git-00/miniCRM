@@ -11,7 +11,6 @@ import {
   Popconfirm,
   Spin,
   Popover,
-  Badge,
   Drawer,
   Checkbox,
   message,
@@ -223,7 +222,7 @@ const CreateOrder = () => {
       children: (
         <div>
           <Card
-            title="Позиции заказа"
+            title="Позиции"
             style={{ marginBottom: "16px" }}
             extra={
               <Space>
@@ -806,32 +805,32 @@ const CreateOrder = () => {
           marginBottom: 16,
         }}
       >
-        <h1 style={{ margin: 0 }}>Новый заказ</h1>
+        <h1 style={{ margin: 0 }}>Заказ: {orderNumber}</h1>
       </div>
 
       <Card style={{ marginBottom: "20px" }}>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "16px" }}>
-          <div style={{ width: "220px" }}>
-            <Text strong>Сумма заказа:</Text>
+          <div style={{ width: "200px" }}>
+            <Text strong>Сумма:</Text>
             <Text
               style={{ color: "green", fontWeight: "bold", marginLeft: "8px" }}
             >
               {totalOrderPrice} ₽
             </Text>
           </div>
-          <div style={{ width: "220px" }}>
+          <div style={{ width: "200px" }}>
             <Text strong>Долг:</Text>
             <Text style={{ color: "red", marginLeft: "8px" }}>
               {calculateOrderDebt().toFixed(2)} ₽
             </Text>
           </div>
-          <div style={{ width: "210px" }}>
+          <div style={{ width: "215px" }}>
             <Text strong>Маржа:</Text>
             <Text style={{ color: "green", marginLeft: "8px" }}>
               {margin.toFixed(2)} ₽
             </Text>
           </div>
-          <div style={{ width: "250px" }}>
+          <div style={{ width: "305px" }}>
             <Text strong>Статус оплаты:</Text>
             <Text style={{ marginLeft: "8px" }}>
               {(() => {
@@ -856,7 +855,15 @@ const CreateOrder = () => {
               })()}
             </Text>
           </div>
+
+          <div style={{ width: "250px" }}>
+            <Text strong>Статус отгрузки:</Text>
+            <Text style={{ marginLeft: "8px" }}>
+              Частично
+            </Text>
+          </div>
         </div>
+
 
         <div
           style={{
@@ -866,26 +873,41 @@ const CreateOrder = () => {
             marginTop: "16px",
           }}
         >
-          <div>
+          {/*<div>
             <Input
               disabled
               value={orderNumber}
               onChange={(value) => setOrderNumber(value)}
               style={{ width: "220px", fontWeight: "bold" }}
             />
-          </div>
+          </div> */}
           <div>
             <Form.Item label="Клиент" style={{ margin: 0 }}>
               <Select
                 showSearch
                 value={selectedClient}
                 onChange={(value) => setSelectedClient(value)}
-                style={{ width: "275px" }}
+                style={{ width: "250px" }}
                 placeholder="Выберите клиента"
               >
                 <Option value="ООО Ромашка">ООО Ромашка</Option>
                 <Option value="ИП Иванов">ИП Иванов</Option>
                 <Option value="ООО Тюльпан">ООО Тюльпан</Option>
+              </Select>
+            </Form.Item>
+          </div>
+
+          <div>
+            <Form.Item label="Контакт" style={{ margin: 0 }}>
+              <Select
+                showSearch
+                //value={selectedClient}
+                //onChange={(value) => setSelectedClient(value)}
+                style={{ width: "250px" }}
+                placeholder="Выберите контактное лицо"
+              >
+                <Option value="ООО Ромашка">Вячеслав Просветов</Option>
+                <Option value="ИП Иванов">Вера Кузнецова</Option>
               </Select>
             </Form.Item>
           </div>
