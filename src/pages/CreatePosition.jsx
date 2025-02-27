@@ -232,7 +232,8 @@ const CreatePosition = () => {
       <Card
         title="Позиции"
         style={{ marginBottom: "16px" }}
-        extra={<Button onClick={addPosition}>Добавить позицию</Button>}
+        extra={<Button onClick={addPosition}>Добавить позицию</Button>} 
+        
       >
         <div style={{ }}>
           {/* Заголовки */}
